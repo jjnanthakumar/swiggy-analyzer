@@ -1,7 +1,6 @@
 import requests
 import json
 import sys
-from rich import print
 
 HEADERS = {
     'Host': 'www.swiggy.com',
@@ -16,64 +15,57 @@ GET_ORDERS_URL = 'https://www.swiggy.com/dapi/order/all?order_id='
 
 
 def getOrders(cookies):
-    print("Retrieving...")
+    print("Retrieving orders...")
     spent = 0
     s = requests.Session()
     last_order_id = ''
     num_of_orders = 0
-    while 1:
+    while True:
         # 10 orders retrieved in each api call
-        URL = ''
-        if last_order_id != '':
-            URL = GET_ORDERS_URL+str(last_order_id).strip()
-        else:
-            URL = GET_ORDERS_URL
-
+        URL = GET_ORDERS_URL + \
+            str(last_order_id).strip() if last_order_id != '' else GET_ORDERS_URL
         r = s.get(URL, headers=HEADERS, cookies=cookies)
         resp = json.loads(r.text)
         if resp['statusCode'] == 1:
-            print("[red][-] Status Code is 1, exiting[/red]")
+            print("Status Code is 1, exiting")
             break
 
         if len(resp['data']['orders']) == 0:
             print("Reached end of orders")
             break
         for order in resp['data']['orders']:
-            order_id = order['order_id']
             order_total = order['order_total']
             # print(order_total)
-            num_of_orders += 1
             spent += order_total
+        num_of_orders += len(resp['data']['orders'])
 
         last_order_id = resp['data']['orders'][-1]['order_id']
 
     average_spent = spent//num_of_orders
     print()
     print(
-        f"[green]Total money spent on swiggy.com : [bold]INR {spent:,}[/bold][/green]")
+        f"Total money spent on swiggy.com : INR {spent:,}")
     print(
-        f"[green]Total number of orders placed : [bold]{num_of_orders:,}[/bold][/green]")
+        f"Total number of orders placed : {num_of_orders:,}")
     print(
-        f"[green]Average money spent on each order : [bold]INR {average_spent:,}[/bold][/green]")
+        f"Average money spent on each order : INR {average_spent:,}")
 
 
 def cookiesToDict():
-    print("[green][+][/green] Getting cookies from [u]cookies.json[/u]")
+    print("Getting cookies from cookies.json")
     data = None
-    cookies = {}
     try:
         with open("cookies.json", "r") as f:
             data = json.load(f)
     except Exception as e:
-        print("[red][-] [u]cookies.json[/u] not found in the path[/red]")
+        print("cookies.json not found in the path")
         print(str(e))
         return None
 
     try:
-        for i in data:
-            cookies[i['name']] = i['value']
+        cookies = {e['name']: e['value'] for e in data}
     except Exception as e:
-        print("[red][-] Cookies are not in proper format[/red]")
+        print("Cookies are not in proper format")
         print(str(e))
         return None
 
@@ -82,20 +74,20 @@ def cookiesToDict():
 
 def checkLogin(cookies):
     # First check if logged in
-    print("[green][+][/green] Checking if session is valid")
+    print("Checking if session is valid")
     r = requests.get(GET_ORDERS_URL, headers=HEADERS, cookies=cookies)
     resp = None
     try:
         resp = json.loads(r.text)
     except Exception as e:
-        print("[red][-] Unexpected Response received[/red]")
+        print("Unexpected Response received")
         return False
 
     if 'statusCode' not in resp or 'data' not in resp:
-        print("[red][-] Unexpected Response received[/red]")
+        print("Unexpected Response received")
         return False
     if resp['statusCode'] == 1:
-        print("[red][-] Not logged in, check cookies and try again[/red]")
+        print("Not logged in, check cookies and try again")
         return False
 
     return True
